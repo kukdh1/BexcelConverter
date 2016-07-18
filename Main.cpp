@@ -191,7 +191,6 @@ DWORD WINAPI ConvertThread(LPVOID arg) {
 
   // Create excel file
   WCHAR szTemp[64];
-  std::mutex m;
   uint32_t sheetidx = 0;
   uint32_t count = file.vTable.size();
   std::function<void(lxw_worksheet *, kukdh1::BexcelTable &)> work = [&](lxw_worksheet *ws, kukdh1::BexcelTable &table) {
@@ -218,6 +217,8 @@ DWORD WINAPI ConvertThread(LPVOID arg) {
   SendMessage(hProgress, PBM_SETPOS, sheetidx, NULL);
 
   if (bSplit) {
+    std::mutex m;
+
     concurrency::parallel_for((size_t)0, file.vTable.size(), [&](size_t i) {
       lxw_workbook *wb;
       lxw_worksheet *ws;
@@ -252,6 +253,7 @@ DWORD WINAPI ConvertThread(LPVOID arg) {
   }
   else {
     lxw_workbook *wb;
+    lxw_worksheet *ws;
     std::wstring filename(wsSaveFolder);
 
     filename.append(L"datasheets.xlsx");
@@ -261,28 +263,20 @@ DWORD WINAPI ConvertThread(LPVOID arg) {
 
     wb = workbook_new(temp.c_str());
 
-    std::vector<lxw_worksheet *> vSheets;
     for (auto iter : file.vTable) {
       std::string temp;
 
       ConvertString(iter.wsTableName, temp);
-      vSheets.push_back(workbook_add_worksheet(wb, temp.c_str()));
+      ws = workbook_add_worksheet(wb, temp.c_str());
+
+      work(ws, iter);
+
+      sheetidx++;
+
+      wsprintf(szTemp, STRING_PROGRESS_PROCESSING, 3, sheetidx, count);
+      SendMessage(hStatusBar, SB_SETTEXT, 0, (LPARAM)szTemp);
+      SendMessage(hProgress, PBM_SETPOS, sheetidx, NULL);
     }
-
-    concurrency::parallel_for((size_t)0, vSheets.size(), [&](size_t i) {
-      work(vSheets.at(i), file.vTable.at(i));
-
-      {
-        std::lock_guard<std::mutex> guard(m);
-        WCHAR szTemp[32];
-
-        sheetidx++;
-
-        wsprintf(szTemp, STRING_PROGRESS_PROCESSING, 3, sheetidx, count);
-        SendMessage(hStatusBar, SB_SETTEXT, 0, (LPARAM)szTemp);
-        SendMessage(hProgress, PBM_SETPOS, sheetidx, NULL);
-      }
-    });
 
     SendMessage(hStatusBar, SB_SETTEXT, 0, (LPARAM)STRING_PROGRESS_WRITING);
 
