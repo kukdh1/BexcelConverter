@@ -3,7 +3,7 @@
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 DWORD WINAPI ConvertThread(LPVOID);
 BOOL FileOpenDialog(WCHAR **pszPath);
-BOOL BrowseFolder(HWND hParent, LPCWSTR szTitle, LPCWSTR szStartPath, WCHAR *szFolder, DWORD dwBufferLength);
+BOOL BrowseFolder(HWND hParent, LPCWSTR szTitle, WCHAR *szFolder, DWORD dwBufferLength);
 BOOL ConvertString(std::wstring &in, std::string &out);
 
 LPCWSTR lpszClass = L"Bexel converter";
@@ -112,7 +112,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT iMessage, WPARAM wParam, LPARAM lParam)
           {
             pszSaveFolderPath = (WCHAR *)calloc(4096, sizeof(WCHAR));
 
-            if (BrowseFolder(hWnd, L"Select folder to save", L"C:\\", pszSaveFolderPath, 4096)) {
+            if (BrowseFolder(hWnd, L"Select folder to save", pszSaveFolderPath, 4096)) {
               SendMessage(hEditDest, WM_SETTEXT, NULL, (LPARAM)pszSaveFolderPath);
             }
 
@@ -333,19 +333,7 @@ BOOL FileOpenDialog(WCHAR **pszPath) {
   return bOpened;
 }
 
-int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData) {
-  switch (uMsg) {
-  case BFFM_INITIALIZED:
-    if (lpData != NULL) {
-      SendMessage(hwnd, BFFM_SETSELECTION, TRUE, (LPARAM)lpData);
-    }
-    break;
-  }
-
-  return 0;
-}
-
-BOOL BrowseFolder(HWND hParent, LPCWSTR szTitle, LPCWSTR szStartPath, WCHAR *szFolder, DWORD dwBufferLength) {
+BOOL BrowseFolder(HWND hParent, LPCWSTR szTitle, WCHAR *szFolder, DWORD dwBufferLength) {
   LPMALLOC pMalloc;
   LPITEMIDLIST pidl;
   BROWSEINFO bi;
@@ -355,8 +343,8 @@ BOOL BrowseFolder(HWND hParent, LPCWSTR szTitle, LPCWSTR szStartPath, WCHAR *szF
   bi.pszDisplayName = NULL;
   bi.lpszTitle = szTitle;
   bi.ulFlags = 0;
-  bi.lpfn = BrowseCallbackProc;
-  bi.lParam = (LPARAM)szStartPath;
+  bi.lpfn = NULL;
+  bi.lParam = NULL;
 
   pidl = SHBrowseForFolder(&bi);
 
